@@ -45,8 +45,8 @@ prepare_input <- function (data, col_select=c(1:length(data)), id =1, date=0,
   clean_data
 }
 
-prepared_data <- prepare_input(raw_data,col_select = c(7,10,13,14,17,24), 
-                               id=1,date=17,m=T,a=T)
+prepared_data <- prepare_input(raw_data,col_select = c(7,10,13,14,17), 
+                               id=1,date=17,m=T,a=F)
 
 assess_gower <- function(data, col_select=c(1:length(data)), id =1, date=0,
                          m=FALSE, a=TRUE, weights = rep.int(1, p), graph = TRUE){
@@ -61,8 +61,8 @@ assess_gower <- function(data, col_select=c(1:length(data)), id =1, date=0,
   return(list(clean_data=clean_data,gower_dist=gower_dist, aggl.clust.c=aggl.clust.c))
 }
 
-gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17,24), 
-                      id=1,date=17,m=T,a=T)
+gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17), 
+                      id=1,date=17,m=T,a=F)
 
  # 1. Distance
  
@@ -133,12 +133,12 @@ gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17,24),
  # stats.df.aggl
  
  
- data_fig<-data.frame(t(cstats.table(gower$gower_dist, gower$aggl.clust.c, 50,5)))
- write.table(data_fig,"data_fig_350.csv", sep = ";", row.names = T)
+ data_fig_5<-data.frame(t(cstats.table(gower$gower_dist, gower$aggl.clust.c, 350,10)))
+ write.table(data_fig_5,"data_fig_350_5mtd.csv", sep = ";", row.names = T)
  # Elbow
  
  # Agglomerative clustering,provides a more ambiguous picture
- ggplot(data = data_fig, 
+ ggplot(data = data_fig_5, 
         aes(x=cluster.number, y=within.cluster.ss)) + 
    geom_point()+
    geom_line()+
@@ -148,7 +148,7 @@ gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17,24),
  
  # Silhouette
  
- ggplot(data = data_fig, 
+ ggplot(data = data_fig_5, 
         aes(x=cluster.number, y=avg.silwidth)) + 
    geom_point()+
    geom_line()+
