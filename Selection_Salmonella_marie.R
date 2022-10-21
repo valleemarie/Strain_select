@@ -7,6 +7,7 @@ library(fpc)
 library(ggplot2)
 library(dplyr)
 library(dendextend)
+library(UpSetR)
 
 data<-read.csv("sisage.csv",sep=";")
 data$CONTEXTE<-as.factor(data$CONTEXTE)
@@ -63,8 +64,39 @@ assess_gower <- function(data, col_select=c(1:length(data)), id =1, date=0,
 
 gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17), 
                       id=1,date=17,m=T,a=F)
+###matrice upset
+col.names <- NULL
+metadata <- colnames(prepared_data)
+vect_all <- NULL
+for (i in 1:ncol(prepared_data)){
+  vect <- unique(prepared_data[,i])
+  vect_all <- c(vect_all, as.vector(vect))
+  for (j in 1:length(vect)){
+    col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
+  }
+}
+
+upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
+rownames(upset_data) <- rownames(prepared_data)
+colnames(upset_data) <- col.names
+for (j in 1:ncol(prepared_data)){
+    for (i in 1:nrow(prepared_data)){  
+      for (k in 1:length(col.names)){
+      if (is.na(prepared_data[i,j])==F & is.na(vect_all[k])==F){
+        if(prepared_data[i,j]==vect_all[k]){
+          upset_data[i,k] <- 1
+        } else {
+        }
+      }
+    }
+  }
+}
+upset_data <- as.data.frame(upset_data)
+upset(upset_data, nsets = 10,)
+###
 
  # 1. Distance
+
  
  gower.dist <- daisy(clean_data, metric = c("gower"))
 
