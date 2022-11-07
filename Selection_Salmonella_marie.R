@@ -64,36 +64,6 @@ assess_gower <- function(data, col_select=c(1:length(data)), id =1, date=0,
 
 gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17), 
                       id=1,date=17,m=T,a=F)
-###matrice upset
-col.names <- NULL
-metadata <- colnames(prepared_data)
-vect_all <- NULL
-for (i in 1:ncol(prepared_data)){
-  vect <- unique(prepared_data[,i])
-  vect_all <- c(vect_all, as.vector(vect))
-  for (j in 1:length(vect)){
-    col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
-  }
-}
-
-upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
-rownames(upset_data) <- rownames(prepared_data)
-colnames(upset_data) <- col.names
-for (j in 1:ncol(prepared_data)){
-    for (i in 1:nrow(prepared_data)){  
-      for (k in 1:length(col.names)){
-      if (is.na(prepared_data[i,j])==F & is.na(vect_all[k])==F){
-        if(prepared_data[i,j]==vect_all[k]){
-          upset_data[i,k] <- 1
-        } else {
-        }
-      }
-    }
-  }
-}
-upset_data <- as.data.frame(upset_data)
-upset(upset_data, nsets = 10,)
-###
 
  # 1. Distance
 
@@ -189,16 +159,16 @@ upset(upset_data, nsets = 10,)
    theme(plot.title = element_text(hjust = 0.5)) 
  
  # 4. Visualisation
- dendro <- as.dendrogram(aggl.clust.c)
+ dendro <- as.dendrogram(gower$aggl.clust.c)
  dendro.col <- dendro %>%
-   set("branches_k_color", k = 50, value =rainbow(n=100)    ) %>%
+   set("branches_k_color", k = 60, value =rainbow(n=60)    ) %>%
    set("branches_lwd", 0.6) %>%
    set("labels_colors", 
        value = c("darkslategray")) %>% 
    set("labels_cex", 0.5)
  ggd1 <- as.ggdend(dendro.col)
  ggplot(ggd1, theme = theme_minimal()) +
-   labs(x = "Num. observations", y = "Height", title = "Dendrogram, k = 50")
+   labs(x = "Num. observations", y = "Height", title = "Dendrogram, k = 60")
  
  # Radial plot looks less cluttered (and cooler)
  ggplot(ggd1, labels = T) + 
@@ -207,20 +177,63 @@ upset(upset_data, nsets = 10,)
  
  
  
- clust.num <- cutree(aggl.clust.c, k = 10) 
- data.cl <- cbind(data, clust.num)
-write.csv(file="sisage_k.csv",data.cl,row.names = FALSE)
+ clust.num <- cutree(gower$aggl.clust.c, k = 60) 
+ data.cl <- cbind(prepared_data, clust.num)
+write.table(file="sisage_60.csv",data.cl,sep = ";", row.names = TRUE)
  clusplot(data.cl, clust.num, 
           color=TRUE, shade=TRUE, labels=0, lines=0, 
-          main = "Customer clusters (k=11)", 
+          main = "Customer clusters (k=60)", 
           cex = 0.3)
  
- clust.num <- cutree(aggl.clust.c, k = 50) 
- data.cl <- cbind(data, clust.num)
- write.csv(file="sisage_50.csv",data.cl,row.names = FALSE)
+ clust.num <- cutree(gower$aggl.clust.c, k = 100) 
+ data.cl <- cbind(prepared_data, clust.num)
+ write.table(file="sisage_100.csv",data.cl,sep = ";", row.names = TRUE)
  clusplot(data.cl, clust.num, 
           color=TRUE, shade=TRUE, labels=0, lines=0, 
-          main = "Customer clusters (k=50)", 
+          main = "Customer clusters (k=100)", 
           cex = 0.3)
 
+ clust.num <- cutree(gower$aggl.clust.c, k = 310) 
+ data.cl <- cbind(prepared_data, clust.num)
+ write.table(file="sisage_310.csv",data.cl,sep = ";", row.names = TRUE)
+ clusplot(data.cl, clust.num, 
+          color=TRUE, shade=TRUE, labels=0, lines=0, 
+          main = "Customer clusters (k=310)", 
+          cex = 0.3)
+ 
+ 
+ 
+ ###matrice upset
+ 
+ col.names <- NULL
+ metadata <- colnames(prepared_data)
+ vect_all <- NULL
+ for (i in 1:ncol(prepared_data)){
+   vect <- unique(prepared_data[,i])
+   vect_all <- c(vect_all, as.vector(vect))
+   for (j in 1:length(vect)){
+     col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
+   }
+ }
+ 
+ upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
+ rownames(upset_data) <- rownames(prepared_data)
+ colnames(upset_data) <- col.names
+ for (j in 1:ncol(prepared_data)){
+   for (i in 1:nrow(prepared_data)){  
+     for (k in 1:length(col.names)){
+       if (is.na(prepared_data[i,j])==F & is.na(vect_all[k])==F){
+         if(prepared_data[i,j]==vect_all[k]){
+           upset_data[i,k] <- 1
+         } else {
+         }
+       }
+     }
+   }
+ }
+ 
+ upset_data <- as.data.frame(upset_data)
+ upset(upset_data, nsets = 10,)
+ ###
+ 
  
