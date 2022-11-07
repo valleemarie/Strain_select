@@ -9,17 +9,16 @@ library(dplyr)
 library(dendextend)
 library(UpSetR)
 
-data<-read.csv("sisage.csv",sep=";")
-data$CONTEXTE<-as.factor(data$CONTEXTE)
-data$MATRICE1<-as.factor(data$MATRICE1)
-data$REGION<-as.factor(data$REGION)
-data$SECTEUR<-as.factor(data$SECTEUR)
-data$Annee<-as.factor(data$Annee)
-data$mois<-as.factor(data$mois)
-data$LIEUPVT<-as.factor(data$LIEUPVT)
-
-
 raw_data<-read.csv("Variant_SISAGE.csv",sep=";")
+
+# 1. Distance and Clustering
+
+## Fonction préparation tableau de données :
+# data = tableau de données complet 
+# col_select = colonnes à selectionner pour le clustering (ex : c(7,10,13,14,17))
+# id = colonne correspondant à l'identifiant de la souche 
+# date = colonne correspondant à la date
+# m et a = TRUE si volonté de créer les colonnes MOIS et ANNEE sinon FALSE
 
 prepare_input <- function (data, col_select=c(1:length(data)), id =1, date=0,
                            m=FALSE, a=TRUE) {
@@ -46,8 +45,11 @@ prepare_input <- function (data, col_select=c(1:length(data)), id =1, date=0,
   clean_data
 }
 
-prepared_data <- prepare_input(raw_data,col_select = c(7,10,13,14,17), 
-                               id=1,date=17,m=T,a=F)
+
+## Fonction assess_gower : prépare le tableau de donnée, calcul la matrice de distance et fait le clustering
+# reprend les entrées de prepare_input
+# weights = Poids des colonnes (ex:  c(1,2,1,1,1) pour donner un poids de 2 à la 2e colonne)
+# graph = TRUE pour avoir le dendrogramme, FAUX sinon
 
 assess_gower <- function(data, col_select=c(1:length(data)), id =1, date=0,
                          m=FALSE, a=TRUE, weights = rep.int(1, p), graph = TRUE){
@@ -63,28 +65,19 @@ assess_gower <- function(data, col_select=c(1:length(data)), id =1, date=0,
 }
 
 gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17), 
-                      id=1,date=17,m=T,a=F)
+                      id=1,date=17,m=TRUE,a=TRUE, weights = c(1,2,1,1,1,1), graph = T)
 
- # 1. Distance
 
- 
- gower.dist <- daisy(clean_data, metric = c("gower"))
-
- # 2. Clustering
- 
- #divisive.clust <- diana(as.matrix(gower.dist), diss = TRUE, keep.diss = TRUE)
- #par(cex=0.6)
- #plot(divisive.clust, main = "Divisive") 
-
- aggl.clust.c <- hclust(gower.dist, method = "complete")
- plot(aggl.clust.c,main = "Agglomerative, complete linkages")
- 
- # 3. Assess clustering
+ # 2. Assess clustering
  
  # Cluster stats comes out as list while it is more convenient to look at it as a table
  # This code below will produce a dataframe with observations in columns and variables in row
  # Not quite tidy data, which will require a tweak for plotting, but I prefer this view as an output here as I find it more comprehensive 
 
+# dist = matrice de distance de gower (gower$gower_dist)
+# tree = clustering réalisé sur la matrice de distance de goxer (gower$aggl.clust.c)
+# k = nombre de cluster à tester 
+# l = pas pour tester les cluster 
  cstats.table <- function(dist, tree, k,l) {
    n=k/l
    clust.assess <- c("cluster.number","n","within.cluster.ss","average.within","average.between",
@@ -127,20 +120,12 @@ gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17),
  }
 
  
- #stats.df.divisive <- cstats.table(gower.dist, divisive.clust, 15)
- #stats.df.divisive 
- 
- 
- # stats.df.aggl <-cstats.table(gower.dist, aggl.clust.c, 90) #complete linkages looks like the most balanced approach
- # stats.df.aggl
- 
- 
- data_fig_5<-data.frame(t(cstats.table(gower$gower_dist, gower$aggl.clust.c, 350,10)))
- write.table(data_fig_5,"data_fig_350_5mtd.csv", sep = ";", row.names = T)
+ data_fig<-data.frame(t(cstats.table(dist = gower$gower_dist, tree = gower$aggl.clust.c, k = 50,l = 10)))
+
  # Elbow
  
  # Agglomerative clustering,provides a more ambiguous picture
- ggplot(data = data_fig_5, 
+ ggplot(data = data_fig, 
         aes(x=cluster.number, y=within.cluster.ss)) + 
    geom_point()+
    geom_line()+
@@ -150,7 +135,7 @@ gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17),
  
  # Silhouette
  
- ggplot(data = data_fig_5, 
+ ggplot(data = data_fig, 
         aes(x=cluster.number, y=avg.silwidth)) + 
    geom_point()+
    geom_line()+
@@ -177,20 +162,20 @@ gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17),
  
  
  
- clust.num <- cutree(gower$aggl.clust.c, k = 60) 
+ clust.num <- cutree(gower$aggl.clust.c, k = 20) 
  data.cl <- cbind(prepared_data, clust.num)
-write.table(file="sisage_60.csv",data.cl,sep = ";", row.names = TRUE)
+write.table(file="sisage_20_matrice2.csv",data.cl,sep = ";", row.names = TRUE)
  clusplot(data.cl, clust.num, 
           color=TRUE, shade=TRUE, labels=0, lines=0, 
-          main = "Customer clusters (k=60)", 
+          main = "Customer clusters (k=20)", 
           cex = 0.3)
  
- clust.num <- cutree(gower$aggl.clust.c, k = 100) 
+ clust.num <- cutree(gower$aggl.clust.c, k = 150) 
  data.cl <- cbind(prepared_data, clust.num)
- write.table(file="sisage_100.csv",data.cl,sep = ";", row.names = TRUE)
+ write.table(file="sisage_150_matrice2.csv",data.cl,sep = ";", row.names = TRUE)
  clusplot(data.cl, clust.num, 
           color=TRUE, shade=TRUE, labels=0, lines=0, 
-          main = "Customer clusters (k=100)", 
+          main = "Customer clusters (k=150)", 
           cex = 0.3)
 
  clust.num <- cutree(gower$aggl.clust.c, k = 310) 
@@ -205,35 +190,35 @@ write.table(file="sisage_60.csv",data.cl,sep = ";", row.names = TRUE)
  
  ###matrice upset
  
- col.names <- NULL
- metadata <- colnames(prepared_data)
- vect_all <- NULL
- for (i in 1:ncol(prepared_data)){
-   vect <- unique(prepared_data[,i])
-   vect_all <- c(vect_all, as.vector(vect))
-   for (j in 1:length(vect)){
-     col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
-   }
- }
- 
- upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
- rownames(upset_data) <- rownames(prepared_data)
- colnames(upset_data) <- col.names
- for (j in 1:ncol(prepared_data)){
-   for (i in 1:nrow(prepared_data)){  
-     for (k in 1:length(col.names)){
-       if (is.na(prepared_data[i,j])==F & is.na(vect_all[k])==F){
-         if(prepared_data[i,j]==vect_all[k]){
-           upset_data[i,k] <- 1
-         } else {
-         }
-       }
-     }
-   }
- }
- 
- upset_data <- as.data.frame(upset_data)
- upset(upset_data, nsets = 10,)
+ # col.names <- NULL
+ # metadata <- colnames(prepared_data)
+ # vect_all <- NULL
+ # for (i in 1:ncol(prepared_data)){
+ #   vect <- unique(prepared_data[,i])
+ #   vect_all <- c(vect_all, as.vector(vect))
+ #   for (j in 1:length(vect)){
+ #     col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
+ #   }
+ # }
+ # 
+ # upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
+ # rownames(upset_data) <- rownames(prepared_data)
+ # colnames(upset_data) <- col.names
+ # for (j in 1:ncol(prepared_data)){
+ #   for (i in 1:nrow(prepared_data)){  
+ #     for (k in 1:length(col.names)){
+ #       if (is.na(prepared_data[i,j])==F & is.na(vect_all[k])==F){
+ #         if(prepared_data[i,j]==vect_all[k]){
+ #           upset_data[i,k] <- 1
+ #         } else {
+ #         }
+ #       }
+ #     }
+ #   }
+ # }
+ # 
+ # upset_data <- as.data.frame(upset_data)
+ # upset(upset_data, nsets = 10,)
  ###
  
  
