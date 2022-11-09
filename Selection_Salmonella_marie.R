@@ -8,17 +8,19 @@ library(ggplot2)
 library(dplyr)
 library(dendextend)
 library(UpSetR)
+library(fusen)
+library(nomclust)
 
 raw_data<-read.csv("Variant_SISAGE.csv",sep=";")
 
 # 1. Distance and Clustering
 
-## Fonction préparation tableau de données :
-# data = tableau de données complet 
-# col_select = colonnes à selectionner pour le clustering (ex : c(7,10,13,14,17))
-# id = colonne correspondant à l'identifiant de la souche 
-# date = colonne correspondant à la date
-# m et a = TRUE si volonté de créer les colonnes MOIS et ANNEE sinon FALSE
+## Fonction pr?paration tableau de donn?es :
+# data = tableau de donn?es complet 
+# col_select = colonnes ? selectionner pour le clustering (ex : c(7,10,13,14,17))
+# id = colonne correspondant ? l'identifiant de la souche 
+# date = colonne correspondant ? la date
+# m et a = TRUE si volont? de cr?er les colonnes MOIS et ANNEE sinon FALSE
 
 prepare_input <- function (data, col_select=c(1:length(data)), id =1, date=0,
                            m=FALSE, a=TRUE) {
@@ -39,16 +41,18 @@ prepare_input <- function (data, col_select=c(1:length(data)), id =1, date=0,
       clean_data$MOIS <- substr(data[,date],4,5)
     } 
   }
+  clean_data[is.na(clean_data)] <- "non sp?cifi?"
   clean_data[] <- lapply(clean_data, factor) 
   print(colnames(clean_data))
   str(clean_data)
   clean_data
 }
 
-
-## Fonction assess_gower : prépare le tableau de donnée, calcul la matrice de distance et fait le clustering
-# reprend les entrées de prepare_input
-# weights = Poids des colonnes (ex:  c(1,2,1,1,1) pour donner un poids de 2 à la 2e colonne)
+prepared_data <- prepare_input(raw_data,col_select = c(7,10,13,14,17,24), 
+                                id=1,date=17,m=TRUE,a=TRUE)
+## Fonction assess_gower : pr?pare le tableau de donn?e, calcul la matrice de distance et fait le clustering
+# reprend les entr?es de prepare_input
+# weights = Poids des colonnes (ex:  c(1,2,1,1,1) pour donner un poids de 2 ? la 2e colonne)
 # graph = TRUE pour avoir le dendrogramme, FAUX sinon
 
 assess_gower <- function(data, col_select=c(1:length(data)), id =1, date=0,
@@ -75,8 +79,8 @@ gower <- assess_gower(raw_data,col_select = c(7,10,13,14,17),
  # Not quite tidy data, which will require a tweak for plotting, but I prefer this view as an output here as I find it more comprehensive 
 
 # dist = matrice de distance de gower (gower$gower_dist)
-# tree = clustering réalisé sur la matrice de distance de goxer (gower$aggl.clust.c)
-# k = nombre de cluster à tester 
+# tree = clustering r?alis? sur la matrice de distance de goxer (gower$aggl.clust.c)
+# k = nombre de cluster ? tester 
 # l = pas pour tester les cluster 
  cstats.table <- function(dist, tree, k,l) {
    n=k/l
@@ -189,36 +193,37 @@ write.table(file="sisage_20_matrice2.csv",data.cl,sep = ";", row.names = TRUE)
  
  
  ###matrice upset
+ col.names <- NULL
+ metadata <- colnames(prepared_data)
+ vect_all <- NULL
+ for (i in 1:ncol(prepared_data)){
+   vect <- unique(prepared_data[,i])
+   vect_all <- c(vect_all, as.vector(vect))
+   for (j in 1:length(vect)){
+     col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
+   }
+ }
  
- # col.names <- NULL
- # metadata <- colnames(prepared_data)
- # vect_all <- NULL
- # for (i in 1:ncol(prepared_data)){
- #   vect <- unique(prepared_data[,i])
- #   vect_all <- c(vect_all, as.vector(vect))
- #   for (j in 1:length(vect)){
- #     col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
- #   }
- # }
- # 
- # upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
- # rownames(upset_data) <- rownames(prepared_data)
- # colnames(upset_data) <- col.names
- # for (j in 1:ncol(prepared_data)){
- #   for (i in 1:nrow(prepared_data)){  
- #     for (k in 1:length(col.names)){
- #       if (is.na(prepared_data[i,j])==F & is.na(vect_all[k])==F){
- #         if(prepared_data[i,j]==vect_all[k]){
- #           upset_data[i,k] <- 1
- #         } else {
- #         }
- #       }
- #     }
- #   }
- # }
- # 
- # upset_data <- as.data.frame(upset_data)
- # upset(upset_data, nsets = 10,)
+
+ upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
+ rownames(upset_data) <- rownames(prepared_data)
+ colnames(upset_data) <- col.names
+ for (j in 1:ncol(prepared_data)){
+   for (i in 1:nrow(prepared_data)){
+     for (k in 1:length(col.names)){
+       if (is.na(prepared_data[i,j])==F){
+         if(prepared_data[i,j]==vect_all[k]){
+           upset_data[i,k] <- 1
+         }
+       }
+     }
+   }
+ }
+
+ upset_data <- as.data.frame(upset_data)
+ upset(upset_data, nsets = 10, order.by = "freq")
  ###
- 
+ #https://veroniquetremblay.github.io/analyse_de_donnees_et_apprentissage_statistique_en_R/classification-non-supervisee.html
+#sm() = Simple Matching Coefficient (SM)
+ prox.sm <- sm(upset_data[c(1:10),])
  
