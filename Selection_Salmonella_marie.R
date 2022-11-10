@@ -10,6 +10,7 @@ library(dendextend)
 library(UpSetR)
 
 raw_data<-read.csv("Variant_SISAGE.csv",sep=";")
+raw_data<-read.csv("upset-stec_FR_eaeneg.csv",sep=";")
 
 # 1. Distance and Clustering
 
@@ -39,7 +40,7 @@ prepare_input <- function (data, col_select=c(1:length(data)), id =1, date=0,
       clean_data$MOIS <- substr(data[,date],4,5)
     } 
   }
-  clean_data[is.na(clean_data)] <- "non spécifié"
+  clean_data[is.na(clean_data)] <- "unknown"
   clean_data[] <- lapply(clean_data, factor) 
   print(colnames(clean_data))
   str(clean_data)
@@ -47,7 +48,7 @@ prepare_input <- function (data, col_select=c(1:length(data)), id =1, date=0,
 }
 
 prepared_data <- prepare_input(raw_data,col_select = c(7,10,13,14,17,24), 
-                                id=1,date=17,m=TRUE,a=TRUE)
+                               id=1,date=17,m=TRUE,a=TRUE)
 ## Fonction assess_gower : pr?pare le tableau de donn?e, calcul la matrice de distance et fait le clustering
 # reprend les entr?es de prepare_input
 # weights = Poids des colonnes (ex:  c(1,2,1,1,1) pour donner un poids de 2 ? la 2e colonne)
@@ -192,36 +193,47 @@ write.table(file="sisage_20_matrice2.csv",data.cl,sep = ";", row.names = TRUE)
  
  ###matrice upset
 prepare_upset<- function(prepared_data){
-  col.names <- NULL
-  metadata <- colnames(prepared_data)
-  vect_all <- NULL
-  for (i in 1:ncol(prepared_data)){
-    vect <- unique(prepared_data[,i])
-    vect_all <- c(vect_all, as.vector(vect))
-    for (j in 1:length(vect)){
-      col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
-    }
-  }
-  upset_data <- matrix(0,nrow(prepared_data),length(vect_all))
-  rownames(upset_data) <- rownames(prepared_data)
-  colnames(upset_data) <- col.names
-  for (j in 1:ncol(prepared_data)){
-    for (i in 1:nrow(prepared_data)){
-      for (k in 1:length(col.names)){
-        if (is.na(prepared_data[i,j])==F){
-          if(prepared_data[i,j]==vect_all[k]){
-            upset_data[i,k] <- 1
-          }
-        }
-      }
-    }
-  }
-  upset_data <- as.data.frame(upset_data)
-  upset_data
+ upset_data <- data.frame(row.names = rownames(prepared_data))
+ metadata <- colnames(prepared_data)
+ for (i in 1:ncol(prepared_data)){
+   vect <- unique(prepared_data[,i])
+   tab <- matrix(0,nrow(prepared_data),length(vect))
+   col.names <- NULL
+   for (j in 1:length(vect)){
+     col.names <- c(col.names,paste(metadata[i],"_",vect[j]))
+     for (k in 1:nrow(prepared_data)){
+       if (is.na(prepared_data[k,i])==F){
+         if(prepared_data[k,i]==vect[j]){
+           tab[k,j] <- 1
+         }
+       }
+     }
+   }
+   colnames(tab) <- col.names
+   upset_data <- cbind(upset_data,tab)
+ } 
+ upset_data
 }
 upset_data <- prepare_upset(prepared_data)
-upset(upset_data, nsets = 55, order.by = "freq", mb.ratio = c(0.30,0.70))
- ###
+upset(upset_data,nset = 55, order.by = "freq", mb.ratio = c(0.30,0.70))
+
+#upset(upset_data,sets = c("stx1 _ -","stx1 _ +","stx2 _ -","stx2 _ +","ehx _ -","ehx _ +","saa _ -","saa _ +"), order.by = "freq", mb.ratio = c(0.30,0.70))
+# contexte <- colnames(upset_data[,c(1:11)])
+# upset(upset_data, sets = contexte, order.by = "freq", mb.ratio = c(0.30,0.70),nintersects = NA)
+# matrice <- colnames(upset_data[,c(12:59)])
+# upset(upset_data, sets = matrice, order.by = "freq", mb.ratio = c(0.30,0.70),nintersects = NA)
+# region <- colnames(upset_data[,c(60:73)])
+# upset(upset_data, sets = region, order.by = "freq", mb.ratio = c(0.30,0.70),nintersects = NA)
+# secteur <- colnames(upset_data[,c(74:78)])
+# upset(upset_data, sets = secteur, order.by = "freq", mb.ratio = c(0.30,0.70),nintersects = NA)
+# lieupvt <- colnames(upset_data[,c(79:92)])
+# upset(upset_data, sets = lieupvt, order.by = "freq", mb.ratio = c(0.30,0.70),nintersects = NA)
+# annee <- colnames(upset_data[,c(93:96)])
+# upset(upset_data, sets = annee, order.by = "freq", mb.ratio = c(0.30,0.70),nintersects = NA)
+# mois <- colnames(upset_data[,c(97:108)])
+# upset(upset_data, sets = mois, order.by = "freq", mb.ratio = c(0.30,0.70),nintersects = NA)
+
+###
  #https://veroniquetremblay.github.io/analyse_de_donnees_et_apprentissage_statistique_en_R/classification-non-supervisee.html
 #sm() = Simple Matching Coefficient (SM)
  prox.sm <- sm(upset_data)
